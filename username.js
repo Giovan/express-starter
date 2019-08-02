@@ -2,34 +2,58 @@ var express = require('express')
 var helpers = require('./helpers')
 var fs = require('fs')
 
+var User = require('./db').User
+
 var router = express.Router({
-    mergeParams: true
+  mergeParams: true
 })
 
-router.all('/', function (req, res, next) {
-  console.log(req.method, 'for', req.params.username)
+router.use(function (req, res, next) {
+  console.log(req.method, 'for', req.params.username, 'at', req.path)
   next()
 })
 
-router.get('/', helpers.verifyUser, function (req, res) {
+router.get('/', function (req, res) {
+  var username = req.params.username;
+  User.findOne({username: username}, function (err, user) {
+    if (err) console.error(err)
+    res.render('user', {
+      user: user,
+      address: user.location
+    })
+  })
+})
+
+/* router.get('/', helpers.verifyUser, function (req, res) {
   var username = req.params.username
   var user = helpers.getUser(username)
   res.render('user', {
     user: user,
     address: user.location
   })
-})
+}) */
 
-router.get('/edit', function(req, res) {
+/* router.get('/edit', function(req, res) {
   res.send('You want to edit' + req.params.username + '???')
+}) */
+
+router.use(function (err, req, res, next) {
+  if (err) console.error(err.stack)
+  res.status(500).send('Something broke!')
 })
 
 router.put('/', function(req, res) {
   var username = req.params.username
-  var user = helpers.getUser(username)
-  user.location = req.body
-  helpers.saveUser(username, user)
-  res.end()
+
+  User.findOne({username: username}, function (err, user) {
+    if (err) console.error(err)
+
+    user.name.full = req.body.name;
+    user.location = req.body.location;
+    user.save(function () {
+      res.end()
+    })
+  })
 })
 
 router.delete('/', function(req, res) {
